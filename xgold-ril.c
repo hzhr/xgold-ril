@@ -986,6 +986,134 @@ error:
     RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
 }
 
+static void requestNeighboringCellIds(void *data, size_t datalen, RIL_Token t)
+{
+/*
+* Maximum number of neighborhood cells
+* 15 is set based on AT specification. It can maximum handle 16 and that
+* includes the current cell, meaning you can have 15 neighbor cells.
+*/
+#define MAX_NUM_NEIGHBOR_CELLS 15
+
+    int err = 0;
+    char *p = NULL;
+    int n = 0;
+    ATLine *tmp = NULL;
+    ATResponse *atresponse = NULL;
+    RIL_NeighboringCell *ptr_cells[MAX_NUM_NEIGHBOR_CELLS];
+
+    /* err = at_send_command_multiline("AT+CGED=1", "+CGED:", &atresponse); */ /* AT+CGED=1 == auto report? */
+    err = at_send_command_multiline("AT+CGED=0", "+CGED:", &atresponse);
+    if (err < 0 ||
+        atresponse->success == 0 || atresponse->p_intermediates == NULL)
+        goto error;
+
+    tmp = atresponse->p_intermediates;
+    while (tmp) {
+        if (n > MAX_NUM_NEIGHBOR_CELLS)
+            goto error;
+        p = tmp->line;
+        if (strstr(p, "Neighbour Cell ")) {
+            char *line = NULL;
+            char *skip = NULL;
+            int mcc = 0;
+            int mnc = 0;
+            int lac = 0;
+            int ci = 0;
+            int bsic = 0;
+            int arfcn = 0;
+            int rxlev = 0;
+
+            tmp = tmp->p_next;
+            line = tmp->line;
+
+/* format:
+Neighbour Cell 1:
+MCC:xxx, MNC:  0, LAC:xxxx, CI:xxxx, BSIC:xx Arfcn:000xx, RxLev:0xx, 
+C1_nc:000xx, C2_nc:000xx,
+*/
+            /* MCC */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nexthexint(&line, &mcc);
+            if (err < 0)
+                goto error;
+
+            /* MNC */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nexthexint(&line, &mnc);
+            if (err < 0)
+                goto error;
+
+            /* LAC */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nexthexint(&line, &lac);
+            if (err < 0)
+                goto error;
+            if (lac == 0)
+                goto next;
+
+            /* CI */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nexthexint(&line, &ci);
+            if (err < 0)
+                goto error;
+            if (ci == 0xffff)
+                goto next;
+
+            /* BSIC */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nexthexint(&line, &bsic);
+            if (err < 0)
+                goto error;
+
+            /* Arfcn */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nextint(&line, &arfcn);
+            if (err < 0)
+                goto error;
+
+            /* RxLev */
+            err = at_tok_start(&line);
+            if (err < 0)
+                goto error;
+            err = at_tok_nextint(&line, &rxlev);
+            if (err < 0)
+                goto error;
+
+            /* process data for each cell */
+            ptr_cells[n] = alloca(sizeof(RIL_NeighboringCell));
+            ptr_cells[n]->rssi = rxlev;
+            ptr_cells[n]->cid = alloca(9 * sizeof(char));
+            sprintf(ptr_cells[n]->cid, "%04x%04x", lac, ci);
+            n++;
+        }
+next:
+        tmp = tmp->p_next;
+    }
+
+    RIL_onRequestComplete(t, RIL_E_SUCCESS, ptr_cells,
+                          n * sizeof(RIL_NeighboringCell *));
+
+finally:
+    at_response_free(atresponse);
+    return;
+
+error:
+    RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
+    goto finally;
+}
 
 static void requestQueryFacilityLock(void *data, size_t datalen, RIL_Token t)
 {
@@ -2383,6 +2511,10 @@ onRequest (int request, void *data, size_t datalen, RIL_Token t)
       case RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE:
         requestSetPreferredNetworkType(data, datalen, t);
         break;
+
+        case RIL_REQUEST_GET_NEIGHBORING_CELL_IDS:
+            requestNeighboringCellIds(data, datalen, t);
+            break;
 
         case RIL_REQUEST_SIM_IO:
             requestSIM_IO(data,datalen,t);

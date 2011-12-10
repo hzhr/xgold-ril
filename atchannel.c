@@ -283,7 +283,7 @@ static void processLine(const char *line)
             }
             break;
         case MULTILINE:
-            if (strStartsWith (line, s_responsePrefix)) {
+            if (strStartsWith (line, s_responsePrefix) || strchr(line, ':')) {
                 addIntermediate(line);
             } else {
                 handleUnsolicited(line);
