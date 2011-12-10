@@ -1274,6 +1274,7 @@ static void requestWriteSmsToSim(void *data, size_t datalen, RIL_Token t)
     asprintf(&cmd, "AT+CMGW=%d,%d", length, p_args->status);
 
     err = at_send_command_sms(cmd, p_args->pdu, "+CMGW:", &p_response);
+    free(cmd);
 
     if (err != 0 || p_response->success == 0) goto error;
 
@@ -1777,11 +1778,13 @@ static void requestSetupDataCall(void *data, size_t datalen, RIL_Token t)
 	        if (written < 0) {
                 LOGE("### ERROR writing to /dev/qmi");
                 close(fd);
+                free(cmd);
                 goto error;
             }
 
             cur += written;
         }
+        free(cmd);
 
         // wait for interface to come online
 
@@ -2073,6 +2076,7 @@ static void requestSendUSSD(void *data, size_t datalen, RIL_Token t)
 
   asprintf(&cmd, "AT+CUSD=%d, \"%s\"", 1, ussdstring);
   err = at_send_command_singleline(cmd, "+CUSD:", &p_response);
+  free(cmd);
 
   if(err < 0 || p_response->success == 0) goto error;
 
@@ -2925,6 +2929,7 @@ static void requestSetNetworkSelectionManual(void *data, size_t datalen, RIL_Tok
   operator = (char *)data;
   asprintf(&cmd, "AT+COPS=1,2,\"%s\"", operator);
   err = at_send_command(cmd, &p_response);
+  free(cmd);
   if (err < 0 || p_response->success == 0){
     err = at_send_command("AT+COPS=0", NULL);
 		if(err < 0) goto error;
@@ -2932,7 +2937,7 @@ static void requestSetNetworkSelectionManual(void *data, size_t datalen, RIL_Tok
   
   RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, 0);
   at_response_free(p_response);
-  free(cmd);
+
   return;
  
 error:
@@ -3020,6 +3025,7 @@ static void requestSetLocationUpdates(void *data, size_t datalen, RIL_Token t)
   asprintf(&cmd, "AT+CREG=%d", updates);
   
   err = at_send_command_singleline(cmd,"+CLIP:",&p_response);
+  free(cmd);
   if(err < 0 || p_response->success == 0) goto error;
   
   RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, 0);
