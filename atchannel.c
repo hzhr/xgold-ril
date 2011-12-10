@@ -70,9 +70,7 @@ static int s_readCount = 0;
 #if AT_DEBUG
 void  AT_DUMP(const char*  prefix, const char*  buff, int  len)
 {
-    if (len < 0)
-        len = strlen(buff);
-    LOGD("%.*s", len, buff);
+    LOGD("%s", buff);
 }
 #endif
 
@@ -808,6 +806,9 @@ static int at_send_command_full (const char *command, ATCommandType type,
     }
 
     pthread_mutex_lock(&s_commandmutex);
+
+	// 20 seconds time out
+	if (timeoutMsec == 0) timeoutMsec = 40000;
 
     err = at_send_command_full_nolock(command, type,
                     responsePrefix, smspdu,

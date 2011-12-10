@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /* define AT_DEBUG to send AT traffic to /tmp/radio-at.log" */
-#define AT_DEBUG  0
+#define AT_DEBUG  1
 
 #if AT_DEBUG
 extern void  AT_DUMP(const char* prefix, const char*  buff, int  len);
