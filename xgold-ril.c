@@ -45,7 +45,7 @@
 #define MAX_AT_RESPONSE 0x1000
 
 /* pathname returned from RIL_REQUEST_SETUP_DATA_CALL / RIL_REQUEST_SETUP_DEFAULT_PDP */
-#define PPP_TTY_PATH "/dev/ppp0"
+#define PPP_TTY_PATH "ppp0"
 
 #ifdef USE_TI_COMMANDS
 
@@ -903,6 +903,7 @@ static void requestGetPreferredNetworkType(void *data, size_t datalen, RIL_Token
     int response = 0;
     char *line;
 
+#if 0
     err = at_send_command_singleline("AT+XRAT?", "+XRAT:", &p_response);
 
     if (err < 0 || p_response->success == 0) {
@@ -924,7 +925,9 @@ static void requestGetPreferredNetworkType(void *data, size_t datalen, RIL_Token
     if (err < 0) {
         goto error;
     }
-
+#else
+    response = 1; /* GSM */
+#endif
     RIL_onRequestComplete(t, RIL_E_SUCCESS, &response, sizeof(int));
     at_response_free(p_response);
     return;
@@ -946,7 +949,8 @@ static void requestSetPreferredNetworkType(void *data, size_t datalen, RIL_Token
     assert (datalen >= sizeof(int *));
     rat = ((int *)data)[0];
 
-    switch (rat) 
+#if 0
+    switch (rat)
     {
         case 0: at_rat = "1,2"; break;/* Dual Mode - WCDMA preferred*/
         case 1: at_rat = "0"; break;  /* GSM only */
@@ -964,7 +968,10 @@ static void requestSetPreferredNetworkType(void *data, size_t datalen, RIL_Token
     if (err < 0|| p_response->success == 0) {
       goto error;
     }
-
+#else
+    if (rat != 1) /* not GSM */
+        goto error;
+#endif
     /* Register on the NW again */
     err = at_send_command("AT+COPS=0", NULL);
     if (err < 0) goto error;
@@ -972,7 +979,7 @@ static void requestSetPreferredNetworkType(void *data, size_t datalen, RIL_Token
     RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, sizeof(int));
     at_response_free(p_response);
     return;
-    
+
 error:
     at_response_free(p_response);
     LOGE("ERROR: requestSetPreferredNetworkType() failed\n");
