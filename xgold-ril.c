@@ -1607,7 +1607,27 @@ static void requestRegistrationState(int request, void *data,
         else
             response[3] = 0; // unknown
     }
+    else  if (request == RIL_REQUEST_GPRS_REGISTRATION_STATE) {
+        /* GPRS/EDGE network type workaround */
+        ATResponse *p_response2 = NULL;
+        cmd = "AT+XREG?";
+        prefix = "+XREG:";
 
+        LOGI("Current network registration status +XREG:");
+        err = at_send_command_singleline(cmd, prefix, &p_response2);
+        if (err < 0) goto out;
+        line = p_response2->p_intermediates->line;
+        err = at_tok_start(&line);
+        if (err < 0) goto out;
+        err = at_tok_nextint(&line, &skip);
+        if (err < 0) goto out;
+        err = at_tok_nextint(&line, &response[3]);
+        if (err < 0) goto out;
+
+        count = 4;
+out:
+        at_response_free(p_response2);
+    }
     if (count > 3)
         asprintf(&responseStr[3], "%d", response[3]);
 
