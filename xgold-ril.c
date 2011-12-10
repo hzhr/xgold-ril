@@ -1846,6 +1846,7 @@ static void requestSendSMS(void *data, size_t datalen, RIL_Token t)
     const char *pdu;
     int tpLayerLength;
     char *cmd1, *cmd2;
+    char *line;
     RIL_SMS_Response response;
     ATResponse *p_response = NULL;
 
@@ -1868,7 +1869,14 @@ static void requestSendSMS(void *data, size_t datalen, RIL_Token t)
 
     memset(&response, 0, sizeof(response));
 
-    /* FIXME fill in messageRef and ackPDU */
+    /* fill in messageRef and ackPDU */
+    line = p_response->p_intermediates->line;
+    err = at_tok_start(&line);
+    if (err != 0)
+        goto out;
+    err = at_tok_nextint(&line, &(response.messageRef));
+out:
+    response.ackPDU = NULL;
 
     RIL_onRequestComplete(t, RIL_E_SUCCESS, &response, sizeof(response));
     at_response_free(p_response);
