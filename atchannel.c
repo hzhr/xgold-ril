@@ -283,7 +283,7 @@ static void processLine(const char *line)
             }
             break;
         case MULTILINE:
-            if (strStartsWith (line, s_responsePrefix) || strchr(line, ':')) {
+            if (strStartsWith (line, s_responsePrefix) || !strStartsWith(line, "+")) {
                 addIntermediate(line);
             } else {
                 handleUnsolicited(line);
@@ -385,10 +385,9 @@ static const char *readline()
         } while (count < 0 && errno == EINTR);
 
         if (count > 0) {
+            p_read[count] = '\0';
             AT_DUMP( "<< ", p_read, count );
             s_readCount += count;
-
-            p_read[count] = '\0';
 
             // skip over leading newlines
             while (*s_ATBufferCur == '\r' || *s_ATBufferCur == '\n')
